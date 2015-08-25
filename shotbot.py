@@ -291,30 +291,29 @@ def noneToString(input_val):
 
 # Helper function - pulls in config.json values
 def importConfig():
-  
-  # Open the config.json file and read in the variables to config[]
-  with open('config.json') as data_file:    
-    config = json.load(data_file)
     
   try:
+
+    # Open the config.json file and read in the variables to config[]
+    with open('config.json') as data_file:    
+      config = json.load(data_file)
     
     sunlight.config.API_KEY = config['sunlight_api_key']
     CRP.apikey = config['crp_api_key']
     GOOGLE_API_KEY = config['google_api_key']
     
-  except KeyError:
+  except (IOError, KeyError):
     
-    print ("It looks like you're missing API keys - double-check that "
-	   "you have a config.json file in the same directory as shotbot, "
-	   "with the following key/values:")
-    print "-------------------------------------------------------------"
-    print """ {
-		"sunlight_api_key":"<your key here - get one from https://goo.gl/Mfp5qr>",
-		"crp_api_key":"<your key here - get one from https://goo.gl/BnlL9q>",
-		"google_api_key":"<your key here - get one from https://goo.gl/DsF2Qu>"
-	      } """
-    print "-------------------------------------------------------------"
-
+    print ("\nIt looks like you're missing API keys - double-check that \n"
+	   "you have a config.json file in the same directory as shotbot, \n"
+	   "with the following key/values:\n")
+    print """
+ {
+      "sunlight_api_key":"<your key here - get one from https://goo.gl/Mfp5qr>",
+      "crp_api_key":"<your key here - get one from https://goo.gl/BnlL9q>",
+      "google_api_key":"<your key here - get one from https://goo.gl/DsF2Qu>"
+ } \n"""
+    exit()
 
 def main():
   
