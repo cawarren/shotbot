@@ -17,10 +17,10 @@ Shotbot uses data provided by:
 ### Dependencies
 Prerequisites to run the script:
 
-pip install beautifulsoup4
-pip install sunlight
+    pip install beautifulsoup4
+    pip install sunlight
 
-Download and install the CRP API client library from VoteSmart:
+Also, download and install the CRP API client library from VoteSmart:
 https://github.com/votesmart/python-crpapi
 
 ### Configuration
@@ -28,13 +28,14 @@ https://github.com/votesmart/python-crpapi
 You'll need to create a config.json file in the same directory as shotbot.py, 
 with the following key/values:
 
- {
-      "sunlight_api_key":"<your key here - get one from https://goo.gl/Mfp5qr>",
-      "crp_api_key":"<your key here - get one from https://goo.gl/BnlL9q>",
-      "google_api_key":"<your key here - get one from https://goo.gl/DsF2Qu>"
- } 
+     {
+          "sunlight_api_key":"<your key here - get one from https://goo.gl/Mfp5qr>",
+          "crp_api_key":"<your key here - get one from https://goo.gl/BnlL9q>",
+          "google_api_key":"<your key here - get one from https://goo.gl/DsF2Qu>"
+     } 
 
 ### Usage
-python shotbot.py
+Just run the script to see output in the terminal:
 
-By default, output will print in the terminal.
+    python shotbot.py
+
