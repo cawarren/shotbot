@@ -20,9 +20,6 @@ import sunlight
 # The config variables (see importConfig)
 config = {}
 
-# The list we use to store incidents and relevant legislators throughout the script
-incidents = []
-
 # Gun violence scraping URLs
 GVA_ROOT_URL = 'http://www.gunviolencearchive.org'
 GVA_PAGES_URL = 'http://www.gunviolencearchive.org/last-72-hours?page='
@@ -45,6 +42,9 @@ adds them to the incidents list.
 Scrapes the GVA website for this info.
 """
 def getIncidents():
+  
+  # The list we use to store incidents and relevant legislators
+  incidents = []
 
   # Format yesterday's date to match the site we're scraping from
   yesterday = date.fromordinal(date.today().toordinal()-1)
@@ -105,6 +105,8 @@ def getIncidents():
 	  print row
 	  print "------------------------------------------------"
 
+  # Return list of incidents
+  return incidents
 
 """
 getGeocodes
@@ -115,7 +117,7 @@ town' or 'corner of two streets' lat/long's.
 
 Uses the Google Geocoding API.
 """
-def getGeocodes():
+def getGeocodes(incidents):
   
   print "Finding geocodes..."
   
@@ -144,11 +146,14 @@ def getGeocodes():
       incident.append(geocode_set)
     
     except (IndexError, KeyError):
+      # Since we're not sure where this happened, set lat/long to -1.
       print "Couldn't parse lat/long from geocode:"
       print "  Address: " + address_string
       print "  Results: " + `parsed_geocoding`
       
-      incidents.remove(incident)
+      incident.append([-1,-1])
+      
+  return incidents
 
 
 """
@@ -160,61 +165,75 @@ lat/long. Records any relevant contact info available.
 
 Uses the Sunlight Foundation 'Congress' and 'OpenStates' APIs.
 """
-def getCongressPeople():
+def getCongressPeople(incidents):
   
   print "Finding relevant legislators..."
   
   for incident in incidents:
-    incident_legislators = []
-    incident_local_legislators = []
     
-    # Find national and local legislators who are responsible for the incident's lat/long
-    legislators = sunlight.congress.locate_legislators_by_lat_lon(incident[8][0], incident[8][1])
-    local_legislators = sunlight.openstates.legislator_geo_search(incident[8][0], incident[8][1])
-    
-    # Append a list of relevant info about each national legislator to the incident
-    for legislator in legislators:
+    # Only proceed if we know where this occurred
+    if incident[0][0] == -1:
+      pass
+    else:
+      incident_legislators = []
+      incident_local_legislators = []
       
-      legislator_info = []
+      # Find national and local legislators who are responsible for the incident's lat/long
+      legislators = sunlight.congress.locate_legislators_by_lat_lon(incident[8][0], incident[8][1])
+      local_legislators = sunlight.openstates.legislator_geo_search(incident[8][0], incident[8][1])
       
-      legislator_info.append(resolve(legislator, 'title'))		# 0 - 'Sen' or 'Rep'
-      legislator_info.append(resolve(legislator, 'first_name'))		# 1 - 'Patty'
-      legislator_info.append(resolve(legislator, 'last_name'))		# 2 - 'Murray'
-      legislator_info.append(resolve(legislator, 'nickname'))		# 3 - None or a string
-      legislator_info.append(resolve(legislator, 'twitter_id'))		# 4 - 'SenatorCantwell'
-      legislator_info.append(resolve(legislator, 'facebook_id'))	# 5 - None or '450819048314124'
-      legislator_info.append(resolve(legislator, 'phone'))		# 6 - '202-224-2621'
-      legislator_info.append(resolve(legislator, 'fax'))		# 7 - '202-224-0238'
-      legislator_info.append(resolve(legislator, 'party'))		# 8 - 'D' or 'R' or (presumably) 'I'
-      legislator_info.append(resolve(legislator, 'contact_form'))	# 9 - 'http://www.murray.senate.gov/public/index.cfm/contactme'
-      legislator_info.append(resolve(legislator, 'birthday'))		# 10 - '1950-10-11'
-      legislator_info.append(resolve(legislator, 'term_start'))		# 11 - '2011-01-05'
+      # Append a list of relevant info about each national legislator to the incident
+      for legislator in legislators:
+	
+	legislator_info = []
+	
+	legislator_info.append(resolve(legislator, 'title'))				# 0 - 'Sen' or 'Rep'
+	legislator_info.append(resolve(legislator, 'first_name'))			# 1 - 'Patty'
+	legislator_info.append(resolve(legislator, 'last_name'))			# 2 - 'Murray'
+	legislator_info.append(resolve(legislator, 'nickname'))				# 3 - None or a string
+	legislator_info.append(resolve(legislator, 'twitter_id'))			# 4 - 'SenatorCantwell'
+	legislator_info.append(resolve(legislator, 'facebook_id'))			# 5 - None or '450819048314124'
+	legislator_info.append(resolve(legislator, 'phone'))				# 6 - '202-224-2621'
+	legislator_info.append(resolve(legislator, 'fax'))				# 7 - '202-224-0238'
+	legislator_info.append(resolve(legislator, 'party'))				# 8 - 'D' or 'R' or (presumably) 'I'
+	legislator_info.append(resolve(legislator, 'contact_form'))			# 9 - 'http://www.murray.senate.gov/.../contactme'
+	legislator_info.append(resolve(legislator, 'birthday'))				# 10 - '1950-10-11'
+	legislator_info.append(resolve(legislator, 'term_start'))			# 11 - '2011-01-05'
+	
+	# Get past 5yr campaign contributions from Gun Rights groups for the legislator
+	contrib_sum = getContributions(resolve(legislator, 'crp_id'))
+	legislator_info.append(contrib_sum)				# 12 - e.g., '1837971' Contributions from Gun Rights orgs, USD
+	
+	incident_legislators.append(legislator_info)
+	
+      # Append national legislators list to the incident
+      incident.append(incident_legislators)
       
-      # Get past 5yr campaign contributions from Gun Rights groups for the legislator
-      contrib_sum = getContributions(resolve(legislator, 'crp_id'))
-      legislator_info.append(contrib_sum)				# 12 - e.g., '1837971' Contributions from Gun Rights orgs, USD
-      
-      incident_legislators.append(legislator_info)
-      
-    # Append national legislators list to the incident
-    incident.append(incident_legislators)
-    
-    # Append a list of relevant info about each state legislator to the incident
-    for legislator in local_legislators:
+      # Append a list of relevant info about each state legislator to the incident
+      for legislator in local_legislators:
 
-      local_legislator_info = []
+	local_legislator_info = []
 
-      local_legislator_info.append(resolve(legislator, 'party'))		# 0 - 'Republican'
-      local_legislator_info.append(resolve(legislator, 'first_name'))		# 1 - 'Patty B.'
-      local_legislator_info.append(resolve(legislator, 'last_name'))		# 2 - 'Murray'
-      local_legislator_info.append(resolve(legislator, 'email'))		# 3 - None or a string
-      local_legislator_info.append(resolve(legislator['offices'][0], 'phone'))	# 4 - '202-224-0238'
-      local_legislator_info.append(resolve(legislator['offices'][0], 'fax'))	# 5 - '202-224-0238'
+	try:
+	  
+	  local_legislator_info.append(resolve(legislator, 'party'))			# 0 - 'Republican'
+	  local_legislator_info.append(resolve(legislator, 'first_name'))		# 1 - 'Patty B.'
+	  local_legislator_info.append(resolve(legislator, 'last_name'))		# 2 - 'Murray'
+	  local_legislator_info.append(resolve(legislator, 'email'))			# 3 - 'a@b.com' or None
+	  local_legislator_info.append(resolve(legislator['offices'][0], 'phone'))	# 4 - '202-224-0238'
+	  local_legislator_info.append(resolve(legislator['offices'][0], 'fax'))	# 5 - '202-224-0238'
+	  
+	except (IndexError, KeyError):
+	  
+	  # Sometimes there are no offices listed. Missing fields are handled by resolve().
+	  pass
+	
+	incident_local_legislators.append(local_legislator_info)
       
-      incident_local_legislators.append(local_legislator_info)
-      
-    # Append national legislators list to the incident
+    # Append local legislators list to the incident
     incident.append(incident_local_legislators)
+    
+  return incidents
 
 
 """
@@ -315,18 +334,19 @@ def importConfig():
  } \n"""
     exit()
 
+
 def main():
   
   # Set up API keys for client libs
   importConfig()
 
   # Do the actual work - get the incidents, map them, and get relevant legislators
-  getIncidents()
-  getGeocodes()
-  getCongressPeople()
+  imported_incidents = getIncidents()
+  geo_tagged_incidents = getGeocodes(imported_incidents)
+  incidents_with_reps = getCongressPeople(geo_tagged_incidents)
   
   # Print what we've found (useful for testing, otherwise remove)
-  for incident in incidents:
+  for incident in incidents_with_reps:
     print incident[0] + ': ' + "Incident in " + incident[2] + ", " + incident[1]
     print "  " + incident[5] + " injured, " + incident[4] + " killed."
     print "  Location: " + incident[3]
